@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "test"
+version = "0.1.0"
+description = ""
+authors = ["Neil Ferreira <root@neilf.net>"]
+
+[tool.poetry.dependencies]
+python = "3.11.0"
+pillow = "^10.1.0"
+pydicom = "^2.4.3"
+pylibjpeg = "^1.4.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
