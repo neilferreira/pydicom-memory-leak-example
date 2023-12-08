@@ -1,5 +1,6 @@
 import logging
 import queue
+import tempfile
 import threading
 import time
 
@@ -21,7 +22,8 @@ def worker():
 
             print(f"Flip around {original_image}")
             horizontal_image = original_image.transpose(Image.FLIP_TOP_BOTTOM)
-            horizontal_image.save("horizontal.png")
+            with tempfile.NamedTemporaryFile(suffix=".jpg") as tmp:
+                horizontal_image.save(tmp.name)
         except Exception:
             logger.exception("An error occurred.")
         finally:
@@ -46,10 +48,14 @@ run_workers()
 watch_memory()
 
 
-for x in range(150):
+for x in range(50):
     image = Image.open("src/image.jpg")
     on_image_receive(image=image)
 
 
 print("Sleeping...")
-time.sleep(300)
+time.sleep(15)
+print(
+    "At this point, the memory usage should be no more than ~2mb which is what it took to run this script."
+    "Any more, and we have a memory leak"
+)

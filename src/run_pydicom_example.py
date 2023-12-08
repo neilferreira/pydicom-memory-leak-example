@@ -1,5 +1,7 @@
 import logging
 import queue
+import sys
+import tempfile
 import threading
 import time
 
@@ -19,9 +21,24 @@ def worker():
         try:
             original_image = flip_queue.get()
 
-            print(f"Flip around {original_image}")
-            original_image.decompress()
-            original_image.save_as("decompressed.dcm")
+            SUPPORTED_TRANSFER_SYNTAXES = {
+                "1.2.840.10008.1.2": "numpy_handler",  # Implicit VR Endian
+                "1.2.840.10008.1.2.1": "numpy_handler",  # Explicit VR Little Endian
+                "1.2.840.10008.1.2.1.99": "numpy_handler",  # Deflated Explicit VR Little Endian
+                "1.2.840.10008.1.2.2": "numpy_handler",  # Explicit VR Big Endian
+                "1.2.840.10008.1.2.5": "rle_handler",  # RLE Lossless
+                "1.2.840.10008.1.2.4.50": "pillow_handler",  # JPEG Baseline (Process 1)
+                "1.2.840.10008.1.2.4.70": "pylibjpeg_handler",  # JPEG Lossles (Process 14 SV 1)
+            }
+
+            print(
+                f"Flip around {original_image} using {SUPPORTED_TRANSFER_SYNTAXES[original_image.file_meta.TransferSyntaxUID]}"  # noqa
+            )
+            original_image.decompress(SUPPORTED_TRANSFER_SYNTAXES[original_image.file_meta.TransferSyntaxUID])
+            with tempfile.NamedTemporaryFile(suffix=".jpg") as tmp:
+                original_image.save_as(tmp.name)
+
+            del original_image
         except Exception:
             logger.exception("An error occurred.")
         finally:
@@ -42,14 +59,23 @@ def on_image_receive(image):
         return 0x0000
 
 
+sample_filename = f"src/{sys.argv[1]}.dcm"
+# assert this file exists
+dcmread(sample_filename)
+
+
 run_workers()
 watch_memory()
 
 
-for x in range(150):
-    image = dcmread("src/dicom.dcm")
+for x in range(75):
+    image = dcmread(sample_filename)
     on_image_receive(image=image)
 
 
-print("Sleeping...")
+while flip_queue.qsize():
+    print(f"{flip_queue.qsize()} remaining tasks..")
+    time.sleep(1)
+
+print("Script has completed.")
 time.sleep(300)
